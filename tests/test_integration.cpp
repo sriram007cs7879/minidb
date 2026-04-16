@@ -8,37 +8,32 @@
 using namespace minidb;
 
 TEST(integration_create_and_insert) {
-    // Use a temp directory for test data
-    std::string test_dir = "/tmp/minidb_test_integration";
+    std::string test_dir = "/tmp/minidb_test_int1";
     std::filesystem::remove_all(test_dir);
 
     Catalog catalog(test_dir);
 
-    // CREATE TABLE
     auto tokens = Tokenizer::tokenize("CREATE TABLE students (id INT, name TEXT, age INT);");
     auto stmt = Parser::parse(tokens);
     std::string result = Executor::execute(stmt.get(), catalog);
     ASSERT_EQ(result, std::string("Table 'students' created."));
 
-    // INSERT
     tokens = Tokenizer::tokenize("INSERT INTO students VALUES (1, 'Alice', 20);");
     stmt = Parser::parse(tokens);
     result = Executor::execute(stmt.get(), catalog);
     ASSERT_EQ(result, std::string("Inserted 1 row."));
 
-    // SELECT
     tokens = Tokenizer::tokenize("SELECT * FROM students;");
     stmt = Parser::parse(tokens);
     result = Executor::execute(stmt.get(), catalog);
     ASSERT_TRUE(result.find("Alice") != std::string::npos);
     ASSERT_TRUE(result.find("1 row") != std::string::npos);
 
-    // Cleanup
     std::filesystem::remove_all(test_dir);
 }
 
 TEST(integration_select_where) {
-    std::string test_dir = "/tmp/minidb_test_where";
+    std::string test_dir = "/tmp/minidb_test_int2";
     std::filesystem::remove_all(test_dir);
 
     Catalog catalog(test_dir);
@@ -54,15 +49,12 @@ TEST(integration_select_where) {
     exec("INSERT INTO people VALUES (2, 'Bob', 25)");
     exec("INSERT INTO people VALUES (3, 'Charlie', 20)");
 
-    // SELECT with WHERE
     std::string result = exec("SELECT * FROM people WHERE age = 20");
     ASSERT_TRUE(result.find("Alice") != std::string::npos);
     ASSERT_TRUE(result.find("Charlie") != std::string::npos);
     ASSERT_TRUE(result.find("2 rows") != std::string::npos);
-    // Bob should not be in the result
     ASSERT_TRUE(result.find("Bob") == std::string::npos);
 
-    // SELECT specific columns
     result = exec("SELECT name FROM people WHERE id = 2");
     ASSERT_TRUE(result.find("Bob") != std::string::npos);
 
@@ -70,7 +62,7 @@ TEST(integration_select_where) {
 }
 
 TEST(integration_delete) {
-    std::string test_dir = "/tmp/minidb_test_delete";
+    std::string test_dir = "/tmp/minidb_test_int3";
     std::filesystem::remove_all(test_dir);
 
     Catalog catalog(test_dir);
@@ -99,7 +91,7 @@ TEST(integration_delete) {
 }
 
 TEST(integration_persistence) {
-    std::string test_dir = "/tmp/minidb_test_persist";
+    std::string test_dir = "/tmp/minidb_test_int4";
     std::filesystem::remove_all(test_dir);
 
     // Session 1: create and insert
@@ -110,14 +102,13 @@ TEST(integration_persistence) {
             auto stmt = Parser::parse(tokens);
             return Executor::execute(stmt.get(), catalog);
         };
-
         exec("CREATE TABLE notes (id INT, text TEXT)");
         exec("INSERT INTO notes VALUES (1, 'Hello World')");
         exec("INSERT INTO notes VALUES (2, 'Goodbye')");
         catalog.saveAll();
     }
 
-    // Session 2: load and verify data is still there
+    // Session 2: data persists on disk via the Pager
     {
         Catalog catalog(test_dir);
         catalog.loadAll();

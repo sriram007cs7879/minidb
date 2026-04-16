@@ -5,10 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Main library (all source files except main.cpp)
+# Main library
 add_library(minidb_lib
+    src/storage/pager.cpp
     src/storage/btree.cpp
-    src/storage/storage.cpp
     src/sql/tokenizer.cpp
     src/sql/parser.cpp
     src/core/table.cpp

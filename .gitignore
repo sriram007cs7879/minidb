@@ -17,6 +17,7 @@ cmake-build-*/
 # Database files (created at runtime)
 minidb_data/
 *.dat
+*.db
 
 # OS files
 .DS_Store

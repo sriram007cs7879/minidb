@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "MiniDB v1.0.0\n";
-    std::cout << "A mini relational database engine built from scratch in C++\n";
+    std::cout << "A mini relational database engine with B+ Tree index and page-based storage\n";
     std::cout << "Data directory: " << data_dir << "/\n";
     std::cout << "Type .help for usage information.\n\n";
 
