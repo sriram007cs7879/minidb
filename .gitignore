@@ -1,0 +1,23 @@
+# Build directories
+build/
+cmake-build-*/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled objects
+*.o
+*.obj
+*.exe
+
+# Database files (created at runtime)
+minidb_data/
+*.dat
+
+# OS files
+.DS_Store
+Thumbs.db
