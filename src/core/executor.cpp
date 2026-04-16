@@ -26,6 +26,11 @@ std::string Executor::execute(Statement* stmt, Catalog& catalog) {
 // CREATE TABLE
 // ============================================================
 std::string Executor::executeCreate(CreateTableStatement* stmt, Catalog& catalog) {
+    // Validate table name
+    if (stmt->table_name.empty()) {
+        throw std::runtime_error("Table name cannot be empty.");
+    }
+
     Schema schema;
     schema.table_name = stmt->table_name;
     schema.columns = stmt->columns;
@@ -43,8 +48,46 @@ std::string Executor::executeInsert(InsertStatement* stmt, Catalog& catalog) {
         throw std::runtime_error("Table not found: " + stmt->table_name);
     }
 
+    const Schema& schema = table->getSchema();
+
+    // Validate value count
+    if (stmt->values.size() != schema.columns.size()) {
+        throw std::runtime_error(
+            "Column count mismatch: table '" + stmt->table_name + "' has " +
+            std::to_string(schema.columns.size()) + " columns, but " +
+            std::to_string(stmt->values.size()) + " values were provided.");
+    }
+
+    // Validate types match schema and check for warnings
+    std::string warnings;
+    for (size_t i = 0; i < schema.columns.size(); i++) {
+        const Column& col = schema.columns[i];
+        const Value& val = stmt->values[i];
+
+        if (col.type == ColumnType::INT) {
+            if (!std::holds_alternative<int>(val)) {
+                throw std::runtime_error(
+                    "Type mismatch for column '" + col.name + "': expected INT, got TEXT value '" +
+                    std::get<std::string>(val) + "'.");
+            }
+        } else {
+            if (!std::holds_alternative<std::string>(val)) {
+                throw std::runtime_error(
+                    "Type mismatch for column '" + col.name + "': expected TEXT, got INT value " +
+                    std::to_string(std::get<int>(val)) + ".");
+            }
+            // Check for TEXT truncation (max 255 chars)
+            const std::string& str = std::get<std::string>(val);
+            if (str.size() > 255) {
+                warnings += "Warning: TEXT column '" + col.name +
+                    "' value truncated from " + std::to_string(str.size()) +
+                    " to 255 characters.\n";
+            }
+        }
+    }
+
     table->insert(stmt->values);
-    return "Inserted 1 row.";
+    return warnings + "Inserted 1 row.";
 }
 
 // ============================================================
@@ -171,6 +214,26 @@ std::string Executor::executeDelete(DeleteStatement* stmt, Catalog& catalog) {
 
 std::function<bool(const Row&)> Executor::buildFilter(
     const WhereClause& where, const Schema& schema) {
+
+    // Validate all column names in WHERE exist in the schema BEFORE building the filter
+    for (auto& cond : where.conditions) {
+        bool found = false;
+        for (auto& col : schema.columns) {
+            if (col.name == cond.column) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            std::string available;
+            for (size_t i = 0; i < schema.columns.size(); i++) {
+                if (i > 0) available += ", ";
+                available += schema.columns[i].name;
+            }
+            throw std::runtime_error(
+                "Column '" + cond.column + "' not found. Available columns: " + available + ".");
+        }
+    }
 
     return [&where, &schema](const Row& row) -> bool {
         bool result = true;  // start with true, AND narrows it down

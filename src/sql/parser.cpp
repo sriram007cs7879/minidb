@@ -15,6 +15,10 @@ std::unique_ptr<Statement> Parser::parse(const std::vector<Token>& tokens) {
 
     Token first = parser.current();
 
+    if (first.type == TokenType::END_OF_INPUT) {
+        throw std::runtime_error("Empty query. Expected CREATE, INSERT, SELECT, or DELETE.");
+    }
+
     if (first.type == TokenType::CREATE) {
         return parser.parseCreateTable();
     } else if (first.type == TokenType::INSERT) {
@@ -25,7 +29,7 @@ std::unique_ptr<Statement> Parser::parse(const std::vector<Token>& tokens) {
         return parser.parseDelete();
     }
 
-    throw std::runtime_error("Unknown statement. Expected CREATE, INSERT, SELECT, or DELETE.");
+    throw std::runtime_error("Unknown statement '" + first.value + "'. Expected CREATE, INSERT, SELECT, or DELETE.");
 }
 
 // ============================================================
@@ -70,6 +74,25 @@ std::unique_ptr<CreateTableStatement> Parser::parseCreateTable() {
 
     expect(TokenType::RPAREN);   // consume ")"
     match(TokenType::SEMICOLON); // optional ";"
+
+    // Validate: at least one column
+    if (stmt->columns.empty()) {
+        throw std::runtime_error("Table must have at least one column.");
+    }
+
+    // Validate: first column must be INT (used as primary key)
+    if (stmt->columns[0].type != ColumnType::INT) {
+        throw std::runtime_error("First column must be INT (used as primary key). Got TEXT column '" + stmt->columns[0].name + "'.");
+    }
+
+    // Validate: no duplicate column names
+    for (size_t i = 0; i < stmt->columns.size(); i++) {
+        for (size_t j = i + 1; j < stmt->columns.size(); j++) {
+            if (stmt->columns[i].name == stmt->columns[j].name) {
+                throw std::runtime_error("Duplicate column name: '" + stmt->columns[i].name + "'.");
+            }
+        }
+    }
 
     return stmt;
 }
@@ -244,10 +267,49 @@ Token Parser::advance() {
     return tok;
 }
 
+// Map token type to a human-readable name for error messages
+static std::string tokenTypeName(TokenType type) {
+    switch (type) {
+        case TokenType::SELECT: return "SELECT";
+        case TokenType::INSERT: return "INSERT";
+        case TokenType::INTO: return "INTO";
+        case TokenType::FROM: return "FROM";
+        case TokenType::WHERE: return "WHERE";
+        case TokenType::CREATE: return "CREATE";
+        case TokenType::TABLE: return "TABLE";
+        case TokenType::DELETE: return "DELETE";
+        case TokenType::VALUES: return "VALUES";
+        case TokenType::AND: return "AND";
+        case TokenType::OR: return "OR";
+        case TokenType::NOT: return "NOT";
+        case TokenType::INT_TYPE: return "INT";
+        case TokenType::TEXT_TYPE: return "TEXT";
+        case TokenType::INT_LITERAL: return "number";
+        case TokenType::STRING_LITERAL: return "string";
+        case TokenType::IDENTIFIER: return "name";
+        case TokenType::STAR: return "*";
+        case TokenType::COMMA: return ",";
+        case TokenType::LPAREN: return "(";
+        case TokenType::RPAREN: return ")";
+        case TokenType::SEMICOLON: return ";";
+        case TokenType::EQUALS: return "=";
+        case TokenType::NOT_EQUALS: return "!=";
+        case TokenType::LESS: return "<";
+        case TokenType::GREATER: return ">";
+        case TokenType::LESS_EQ: return "<=";
+        case TokenType::GREATER_EQ: return ">=";
+        case TokenType::END_OF_INPUT: return "end of input";
+    }
+    return "unknown";
+}
+
 Token Parser::expect(TokenType type) {
     Token tok = current();
     if (tok.type != type) {
-        throw std::runtime_error("Unexpected token: " + tok.value);
+        if (tok.type == TokenType::END_OF_INPUT) {
+            throw std::runtime_error("Unexpected end of input. Expected " + tokenTypeName(type) + ".");
+        }
+        throw std::runtime_error("Expected " + tokenTypeName(type) + ", got '" + tok.value + "'.");
     }
     pos_++;
     return tok;

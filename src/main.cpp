@@ -136,8 +136,16 @@ int main(int argc, char* argv[]) {
             std::string result = Executor::execute(stmt.get(), catalog);
 
             std::cout << result << "\n";
+        } catch (const std::runtime_error& e) {
+            std::cout << "Error: " << e.what() << "\n";
+        } catch (const std::bad_variant_access&) {
+            std::cout << "Error: Type mismatch in values. Check that INT columns get numbers and TEXT columns get strings.\n";
+        } catch (const std::out_of_range&) {
+            std::cout << "Error: Value out of range.\n";
         } catch (const std::exception& e) {
             std::cout << "Error: " << e.what() << "\n";
+        } catch (...) {
+            std::cout << "Error: An unexpected error occurred.\n";
         }
     }
 
