@@ -11,13 +11,22 @@ struct TestCase {
     std::function<void()> func;
 };
 
-static std::vector<TestCase>& getTests() {
+// Use inline to ensure ONE shared instance across all .cpp files
+// (requires C++17)
+inline std::vector<TestCase>& getTests() {
     static std::vector<TestCase> tests;
     return tests;
 }
 
-static int gFailCount = 0;
-static int gPassCount = 0;
+inline int& getFailCount() {
+    static int count = 0;
+    return count;
+}
+
+inline int& getPassCount() {
+    static int count = 0;
+    return count;
+}
 
 #define TEST(name) \
     void test_##name(); \
@@ -27,7 +36,7 @@ static int gPassCount = 0;
 #define ASSERT_TRUE(expr) \
     if (!(expr)) { \
         std::cerr << "  FAIL: " << #expr << " (line " << __LINE__ << ")\n"; \
-        gFailCount++; \
+        getFailCount()++; \
         return; \
     }
 
@@ -36,7 +45,7 @@ static int gPassCount = 0;
 #define ASSERT_EQ(a, b) \
     if ((a) != (b)) { \
         std::cerr << "  FAIL: " << #a << " == " << #b << " (line " << __LINE__ << ")\n"; \
-        gFailCount++; \
+        getFailCount()++; \
         return; \
     }
 
@@ -45,23 +54,23 @@ static int gPassCount = 0;
       try { expr; } catch (...) { caught = true; } \
       if (!caught) { \
           std::cerr << "  FAIL: expected exception from " << #expr << " (line " << __LINE__ << ")\n"; \
-          gFailCount++; \
+          getFailCount()++; \
           return; \
       } \
     }
 
-static int runAllTests() {
+inline int runAllTests() {
     std::cout << "Running " << getTests().size() << " tests...\n\n";
     for (auto& test : getTests()) {
-        int before = gFailCount;
+        int before = getFailCount();
         test.func();
-        if (gFailCount == before) {
+        if (getFailCount() == before) {
             std::cout << "  PASS: " << test.name << "\n";
-            gPassCount++;
+            getPassCount()++;
         } else {
             std::cout << "  FAIL: " << test.name << "\n";
         }
     }
-    std::cout << "\n" << gPassCount << " passed, " << gFailCount << " failed.\n";
-    return gFailCount > 0 ? 1 : 0;
+    std::cout << "\n" << getPassCount() << " passed, " << getFailCount() << " failed.\n";
+    return getFailCount() > 0 ? 1 : 0;
 }
