@@ -102,7 +102,7 @@ TEST(integration_persistence) {
             auto stmt = Parser::parse(tokens);
             return Executor::execute(stmt.get(), catalog);
         };
-        exec("CREATE TABLE notes (id INT, text TEXT)");
+        exec("CREATE TABLE notes (id INT, content TEXT)");
         exec("INSERT INTO notes VALUES (1, 'Hello World')");
         exec("INSERT INTO notes VALUES (2, 'Goodbye')");
         catalog.saveAll();
