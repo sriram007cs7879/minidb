@@ -36,7 +36,6 @@ static int gPassCount = 0;
 #define ASSERT_EQ(a, b) \
     if ((a) != (b)) { \
         std::cerr << "  FAIL: " << #a << " == " << #b << " (line " << __LINE__ << ")\n"; \
-        std::cerr << "    Got: " << (a) << " vs " << (b) << "\n"; \
         gFailCount++; \
         return; \
     }
